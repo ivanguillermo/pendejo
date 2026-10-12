@@ -1,6 +1,6 @@
 
 const ADMIN_EMAILS = ["ivanglopezp@gmail.com", "equ1strec3@gmail.com", "paulaherro.05@gmail.com"];
-const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbzd1d_5lIZiPx1w2LjnDxUJlVERmV-G9Grx0bOFDgKg0YWtHLpJyLwW03w2H5G5SJSx/exec";
+const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbx9QhOOrI2mmwc6xmGtmq5clQH7rhUqZSXbnF2mMonTlowhbqlEZ_ftsXSi8Ld6yvO-/exec";
 let imagenDriveUrl = ""; 
 
 function parseJwt(token) {
