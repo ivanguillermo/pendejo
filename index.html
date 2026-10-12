@@ -3,89 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subir Producto con IA</title>
+    <title>Registrar Nuevo Producto - PWA</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 500px; margin: 40px auto; padding: 20px; background: #f4f4f9; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        input[type="file"] { margin: 15px 0; width: 100%; }
-        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
-        button:hover { background: #0056b3; }
-        #loading { display: none; margin-top: 15px; color: #555; text-align: center; }
-        #resultado { margin-top: 20px; background: #e9ecef; padding: 10px; border-radius: 5px; white-space: pre-wrap; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 20px; display: flex; justify-content: center; }
+        .card { background: #1e293b; width: 100%; max-width: 600px; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        h2 { color: #38bdf8; margin-top: 0; display: flex; align-items: center; gap: 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .full { grid-column: span 2; }
+        label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 5px; }
+        input, select, textarea { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: white; font-size: 14px; box-sizing: border-box; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #38bdf8; }
+        textarea { resize: vertical; height: 80px; }
+        button { background: #10b981; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; margin-top: 20px; transition: background 0.2s; }
+        button:hover { background: #059669; }
+        #loading { display: none; text-align: center; color: #38bdf8; margin: 15px 0; font-weight: 500; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h2>Subir Producto con IA</h2>
-        <p>Sube una foto de tu producto. La IA extraerá los datos y los guardará en tu Google Sheet.</p>
-        
-        <!-- Input para la foto (permite cámara directa en celulares) -->
-        <input type="file" id="fotoInput" accept="image/*" capture="environment">
-        
-        <button onclick="subirProducto()">Procesar y Guardar</button>
-        
-        <div id="loading">Analizando imagen con IA y guardando en Sheet... ⏳</div>
-        <div id="resultado"></div>
+        <h2>+ Registrar Nuevo Producto</h2>
+        <p style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">Sube la foto del producto para que la IA precargue la información automáticamente.</p>
+
+        <div class="grid">
+            <div class="full">
+                <label>Imagen Local / Foto del Producto:</label>
+                <input type="file" id="fotoInput" accept="image/*" capture="environment" onchange="procesarImagenConIA()">
+            </div>
+
+            <div id="loading" class="full">Analizando imagen con IA y subiendo al Drive... ⏳</div>
+
+            <div class="full">
+                <label>Nombre del Producto:</label>
+                <input type="text" id="nombre" placeholder="Ej: Correa Minimalista">
+            </div>
+
+            <div>
+                <label>Precio ($):</label>
+                <input type="number" step="0.01" id="precio" placeholder="0.00">
+            </div>
+
+            <div>
+                <label>Costo ($):</label>
+                <input type="number" step="0.01" id="costo" placeholder="0.00">
+            </div>
+
+            <div>
+                <label>Categoría:</label>
+                <input type="text" id="categoria" placeholder="Categoría detectada">
+            </div>
+
+            <div>
+                <label>Subcategoría:</label>
+                <input type="text" id="categoria_secundaria" placeholder="Subcategoría">
+            </div>
+
+            <div>
+                <label>Proveedor:</label>
+                <input type="text" id="proveedor" placeholder="Nombre del proveedor">
+            </div>
+
+            <div>
+                <label>Colección:</label>
+                <input type="text" id="coleccion" placeholder="Colección">
+            </div>
+
+            <div>
+                <label>Talla / Medida:</label>
+                <input type="text" id="talla" placeholder="Ej: Única">
+            </div>
+
+            <div>
+                <label>Stock:</label>
+                <input type="number" id="stock" placeholder="0">
+            </div>
+
+            <div class="full">
+                <label>Descripción:</label>
+                <textarea id="descripcion" placeholder="Detalle del producto"></textarea>
+            </div>
+        </div>
+
+        <button onclick="guardarProductoFinal()">💾 Guardar y Publicar</button>
     </div>
 
     <script>
-        async function subirProducto() {
+        const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbySIYkPME1hynvc89RIKrrSVmd3UlY5O_cFrHjUL6e47bXOq1Wq-UM0VxmSJr12qcc/exec"; // Pega aquí tu URL de Apps Script
+        let imagenDriveUrl = "";
+
+        async function procesarImagenConIA() {
             const input = document.getElementById('fotoInput');
             const loading = document.getElementById('loading');
-            const resultado = document.getElementById('resultado');
 
-            if (input.files.length === 0) {
-                alert("Por favor selecciona o toma una foto primero.");
-                return;
-            }
+            if (input.files.length === 0) return;
 
             const file = input.files[0];
             loading.style.display = "block";
-            resultado.innerHTML = "";
 
-            // Convertir la imagen a Base64 para enviarla en el JSON
             const reader = new FileReader();
             reader.readAsDataURL(file);
-            
+
             reader.onload = async function () {
                 const base64Data = reader.result;
 
-                const payload = {
-                    image: base64Data,
-                    mimeType: file.type,
-                    fileName: file.name
-                };
-
-                // PEGA AQUÍ TU URL DE LA APLICACIÓN WEB DE APPS SCRIPT
-                const urlWebapp = "https://script.google.com/macros/s/AKfycbzh_EovkwZ1m5H-jrMV_h_Ymll5NN_Wy-PuslD-L7ytkyiNOE7_IKORJq9H0fRwrY0J/exec";
-
                 try {
-                    const response = await fetch(urlWebapp, {
+                    const response = await fetch(URL_WEBAPP, {
                         method: "POST",
-                        body: JSON.stringify(payload),
-                        // Nota: Usamos no-cors o un fetch directo. Como Apps Script redirige, 
-                        // a veces fetch directo funciona si se maneja la respuesta:
+                        body: JSON.stringify({
+                            action: "analizar",
+                            image: base64Data,
+                            mimeType: file.type
+                        })
                     });
 
                     const result = await response.json();
                     loading.style.display = "none";
 
                     if (result.status === "success") {
-                        resultado.innerHTML = `<strong>¡Éxito! Producto guardado:</strong>\n\n` +
-                            `Nombre: ${result.data.nombre}\n` +
-                            `Categoría: ${result.data.categoria}\n` +
-                            `Descripción: ${result.data.descripcion}`;
-                        input.value = ""; // Limpiar input
+                        // Prellenar los campos con lo que sugirió la IA
+                        document.getElementById('nombre').value = result.sugerencia.nombre || "";
+                        document.getElementById('categoria').value = result.sugerencia.categoria || "";
+                        document.getElementById('categoria_secundaria').value = result.sugerencia.categoria_secundaria || "";
+                        document.getElementById('coleccion').value = result.sugerencia.coleccion || "";
+                        document.getElementById('descripcion').value = result.sugerencia.descripcion || "";
+                        
+                        // Guardar la URL de la imagen en Drive para enviarla al registrar
+                        imagenDriveUrl = result.imagen_drive || "";
+                        alert("¡IA analizó el producto con éxito! Revisa y completa los datos de precio, costo y stock.");
                     } else {
-                        resultado.innerHTML = "Error: " + result.message;
+                        alert("Error al analizar: " + result.message);
                     }
-
                 } catch (error) {
                     loading.style.display = "none";
-                    resultado.innerHTML = "Error de conexión o de script: " + error.message;
+                    alert("Error de conexión: " + error.message);
                 }
             };
+        }
+
+        async function guardarProductoFinal() {
+            const producto = {
+                nombre: document.getElementById('nombre').value,
+                precio: document.getElementById('precio').value,
+                costo: document.getElementById('costo').value,
+                categoria: document.getElementById('categoria').value,
+                categoria_secundaria: document.getElementById('categoria_secundaria').value,
+                proveedor: document.getElementById('proveedor').value,
+                coleccion: document.getElementById('coleccion').value,
+                talla: document.getElementById('talla').value,
+                stock: document.getElementById('stock').value,
+                descripcion: document.getElementById('descripcion').value,
+                imagen_drive: imagenDriveUrl
+            };
+
+            if (!producto.nombre) {
+                alert("Por favor ingresa o procesa un nombre para el producto.");
+                return;
+            }
+
+            try {
+                const response = await fetch(URL_WEBAPP, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        action: "guardar",
+                        producto: producto
+                    })
+                });
+
+                const result = await response.json();
+                if (result.status === "success") {
+                    alert("¡Producto registrado y guardado en Catalogo1 con éxito!");
+                    location.reload(); // Recargar formulario limpio
+                } else {
+                    alert("Error al guardar: " + result.message);
+                }
+            } catch (error) {
+                alert("Error de red al guardar: " + error.message);
+            }
         }
     </script>
 </body>
