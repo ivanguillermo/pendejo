@@ -58,8 +58,19 @@
 
         <div class="grid">
             <div class="full" style="background: #0f172a; padding: 12px; border-radius: 6px; border: 1px dashed #38bdf8;">
-                <label style="color: #38bdf8;">Sube o toma la foto del producto:</label>
-                <input type="file" id="fotoInput" accept="image/*" capture="environment" onchange="procesarImagenConIA()">
+                <label style="color: #38bdf8; margin-bottom: 8px;">Imagen del Producto:</label>
+                
+                <!-- Opción A: Subir desde dispositivo -->
+                <div style="margin-bottom: 10px;">
+                    <label style="font-size: 11px; color: #94a3b8;">Subir desde el dispositivo:</label>
+                    <input type="file" id="fotoInput" accept="image/*" capture="environment" onchange="procesarImagenConIA()">
+                </div>
+
+                <!-- Opción B: O pegar enlace directo de una foto que ya está en Drive -->
+                <div>
+                    <label style="font-size: 11px; color: #94a3b8;">O pega el enlace de Google Drive existente:</label>
+                    <input type="text" id="linkDriveManual" placeholder="https://drive.google.com/file/d/..." style="font-size: 12px;">
+                </div>
             </div>
 
             <div id="loading" class="full">🤖 Analizando imagen con IA... ⏳</div>
