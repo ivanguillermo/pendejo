@@ -3,35 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registrar Nuevo Producto</title>
+    <title>Registrar Producto con IA y Auth</title>
+    <!-- Google Identity Services -->
+    <script src="[https://accounts.google.com/gsi/client](https://accounts.google.com/gsi/client)" async defer></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 20px; display: flex; justify-content: center; }
-        .card { background: #1e293b; width: 100%; max-width: 600px; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        h2 { color: #38bdf8; margin-top: 0; display: flex; align-items: center; gap: 8px; }
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: #0f172a; color: #f8fafc; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        
+        /* PANTALLA DE LOGIN */
+        #loginScreen { text-align: center; width: 100%; max-width: 400px; background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid #334155; }
+        
+        /* APP CONTAINER */
+        #appContainer { display: none; width: 100%; max-width: 650px; background: #1e293b; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid #334155; }
+        
+        .header-app { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+        h2 { color: #38bdf8; margin: 0; font-size: 18px; }
+        .btn-salir { background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; }
+
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .full { grid-column: span 2; }
         label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 5px; }
-        input, select, textarea { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: white; font-size: 14px; box-sizing: border-box; }
+        input, select, textarea { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: white; font-size: 14px; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: #38bdf8; }
         textarea { resize: vertical; height: 80px; }
-        button { background: #10b981; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; margin-top: 20px; transition: background 0.2s; }
-        button:hover { background: #059669; }
-        #loading { display: none; text-align: center; color: #38bdf8; margin: 15px 0; font-weight: 500; }
+        
+        button.btn-guardar { background: #10b981; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; margin-top: 20px; transition: background 0.2s; }
+        button.btn-guardar:hover { background: #059669; }
+        
+        #loading { display: none; text-align: center; color: #38bdf8; margin: 10px 0; font-weight: 500; font-size: 13px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>+ Registrar Nuevo Producto</h2>
-        <p style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">Sube la foto del producto para que la IA precargue la información automáticamente.</p>
+    <!-- PANTALLA 1: LOGIN DE GOOGLE -->
+    <div id="loginScreen">
+        <h2>🔒 Acceso Restringido</h2>
+        <p style="color:#94a3b8; font-size:13px; margin: 15px 0 25px 0;">Inicia sesión con tu cuenta de Google autorizada para continuar.</p>
+        
+        <div id="g_id_onload"
+             data-client_id="1051720410997-kc6qojr44e03ofm9r8ni0enng367sauh.apps.googleusercontent.com"
+             data-callback="handleCredentialResponse">
+        </div>
+        <div class="g_id_signin" data-type="standard" data-size="large" data-theme="filled_black"></div>
+        <div id="loginError" style="color:#ef4444; margin-top:15px; display:none; font-size: 13px;">⛔ Acceso no autorizado para este correo.</div>
+    </div>
+
+    <!-- PANTALLA 2: FORMULARIO DE PRODUCTO -->
+    <div id="appContainer">
+        <div class="header-app">
+            <h2>+ Registrar Producto con IA</h2>
+            <button class="btn-salir" onclick="cerrarSesion()">Cerrar Sesión</button>
+        </div>
 
         <div class="grid">
-            <div class="full">
-                <label>Imagen Local / Foto del Producto:</label>
+            <div class="full" style="background: #0f172a; padding: 12px; border-radius: 6px; border: 1px dashed #38bdf8;">
+                <label style="color: #38bdf8;">Sube o toma la foto del producto:</label>
                 <input type="file" id="fotoInput" accept="image/*" capture="environment" onchange="procesarImagenConIA()">
             </div>
 
-            <div id="loading" class="full">Analizando imagen con IA y subiendo al Drive... ⏳</div>
+            <div id="loading" class="full">🤖 Analizando imagen con IA... ⏳</div>
 
             <div class="full">
                 <label>Nombre del Producto:</label>
@@ -84,12 +114,50 @@
             </div>
         </div>
 
-        <button onclick="guardarProductoFinal()">💾 Guardar y Publicar</button>
+        <button class="btn-guardar" onclick="guardarProductoFinal()">💾 Guardar en Catalogo1</button>
     </div>
 
     <script>
-        const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbzBp2ULAOSaUAk7W2k3qED3YfUR323liTSKdAXNk3WeiduvOFWfJjPg84xZIZo5iPSb/exec"; // Pega aquí tu URL de Apps Script
-        let imagenDriveUrl = "";
+        const ADMIN_EMAILS = ["ivanglopezp@gmail.com", "equ1strec3@gmail.com", "paulaherro.05@gmail.com"]; // Agrega tus correos autorizados
+        const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbwxvMGGSZ7RefNbGGBHcBvh77wfnEizrOhyMH1UIguB_rCDrrTUDFURCCkfDBYJOBjI/exec"; // Pega aquí tu URL de Apps Script de esta app
+        let imagenDriveUrl = ""; // Aquí mantienes tu lógica existente para el enlace de Drive si lo manejas aparte
+
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                return JSON.parse(decodeURIComponent(window.atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+            } catch(e) { return null; }
+        }
+
+        function handleCredentialResponse(response) {
+            const payload = parseJwt(response.credential);
+            if (!payload || !payload.email) return;
+            
+            if (ADMIN_EMAILS.includes(payload.email.toLowerCase())) {
+                sessionStorage.setItem("auth", "true");
+                sessionStorage.setItem("userEmail", payload.email);
+                mostrarApp();
+            } else {
+                document.getElementById("loginError").style.display = "block";
+            }
+        }
+
+        function mostrarApp() {
+            document.getElementById("loginScreen").style.display = "none";
+            document.getElementById("appContainer").style.display = "block";
+        }
+
+        function cerrarSesion() {
+            sessionStorage.clear();
+            window.location.reload();
+        }
+
+        window.onload = function() {
+            if (sessionStorage.getItem("auth") === "true") {
+                mostrarApp();
+            }
+        };
 
         async function procesarImagenConIA() {
             const input = document.getElementById('fotoInput');
@@ -120,16 +188,13 @@
                     loading.style.display = "none";
 
                     if (result.status === "success") {
-                        // Prellenar los campos con lo que sugirió la IA
                         document.getElementById('nombre').value = result.sugerencia.nombre || "";
                         document.getElementById('categoria').value = result.sugerencia.categoria || "";
                         document.getElementById('categoria_secundaria').value = result.sugerencia.categoria_secundaria || "";
                         document.getElementById('coleccion').value = result.sugerencia.coleccion || "";
                         document.getElementById('descripcion').value = result.sugerencia.descripcion || "";
                         
-                        // Guardar la URL de la imagen en Drive para enviarla al registrar
-                        imagenDriveUrl = result.imagen_drive || "";
-                        alert("¡IA analizó el producto con éxito! Revisa y completa los datos de precio, costo y stock.");
+                        alert("✨ ¡IA precargó los datos con éxito! Revisa, completa precio/costo/stock y guarda.");
                     } else {
                         alert("Error al analizar: " + result.message);
                     }
@@ -152,11 +217,11 @@
                 talla: document.getElementById('talla').value,
                 stock: document.getElementById('stock').value,
                 descripcion: document.getElementById('descripcion').value,
-                imagen_drive: imagenDriveUrl
+                imagen_drive: imagenDriveUrl // Aquí puedes enlazar tu subida a Drive actual
             };
 
             if (!producto.nombre) {
-                alert("Por favor ingresa o procesa un nombre para el producto.");
+                alert("Por favor ingresa un nombre para el producto.");
                 return;
             }
 
@@ -171,8 +236,8 @@
 
                 const result = await response.json();
                 if (result.status === "success") {
-                    alert("¡Producto registrado y guardado en Catalogo1 con éxito!");
-                    location.reload(); // Recargar formulario limpio
+                    alert("✅ ¡Producto guardado correctamente en Catalogo1!");
+                    location.reload();
                 } else {
                     alert("Error al guardar: " + result.message);
                 }
@@ -182,4 +247,5 @@
         }
     </script>
 </body>
+</html>
 </html>
