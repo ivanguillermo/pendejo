@@ -1,5 +1,5 @@
 const ADMIN_EMAILS = ["ivanglopezp@gmail.com", "equ1strec3@gmail.com", "paulaherro.05@gmail.com"];
-const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbxVOAFKL8SM5vBjMynxX3LvoqnnSZJYzvPbLhDn57k9JFIo7wYu_zG4goZT3E5VEcXx/exec";
+const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbwgUsF84H4dYLU-oFZ_uQlMPCOcym7frxZfJhPf4yKasoMdFGT3d87JSWwGAjEClcOX/exec";
 let imagenDriveUrl = ""; 
 let base64ComprimidoGlobal = "";
 
