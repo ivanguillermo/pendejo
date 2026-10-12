@@ -5,15 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registrar Producto con IA y Auth</title>
     <!-- Google Identity Services -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="[https://accounts.google.com/gsi/client](https://accounts.google.com/gsi/client)" async defer></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background: #0f172a; color: #f8fafc; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
         
-        /* PANTALLA DE LOGIN */
         #loginScreen { text-align: center; width: 100%; max-width: 400px; background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid #334155; }
-        
-        /* APP CONTAINER */
         #appContainer { display: none; width: 100%; max-width: 650px; background: #1e293b; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid #334155; }
         
         .header-app { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 10px; }
@@ -40,7 +37,6 @@
         <h2>🔒 Acceso Restringido</h2>
         <p style="color:#94a3b8; font-size:13px; margin: 15px 0 25px 0;">Inicia sesión con tu cuenta de Google autorizada para continuar.</p>
         
-        <!-- ÚNICO BLOQUE DE INICIALIZACIÓN DE GOOGLE OAUTH -->
         <div id="g_id_onload"
              data-client_id="366811567796-abf3n9eegpg29qrf2d6qiqp1c4e3fm98.apps.googleusercontent.com"
              data-callback="handleCredentialResponse">
@@ -60,25 +56,22 @@
             <div class="full" style="background: #0f172a; padding: 15px; border-radius: 8px; border: 1px dashed #38bdf8;">
                 <label style="color: #38bdf8; font-weight: bold; margin-bottom: 10px;">📸 Imagen del Producto y Análisis IA</label>
                 
-                <!-- Nombre personalizado para el archivo en Drive -->
                 <div style="margin-bottom: 10px;">
                     <label style="font-size: 11px; color: #94a3b8;">Nombre del archivo en Drive:</label>
                     <input type="text" id="nombreImagenPersonalizado" placeholder="Ej: Correa_Cuero_Negro" style="font-size: 13px;">
                 </div>
 
-                <!-- Selector de archivo (Dispara el proceso de inmediato) -->
                 <div style="margin-bottom: 10px;">
                     <input type="file" id="fotoInput" accept="image/*" capture="environment" onchange="ejecutarSubidaYAnalisis(this)" style="font-size: 12px;">
                 </div>
 
-                <!-- Contenedor de Preview -->
                 <div id="previewContainer" style="display: none; margin-top: 10px; text-align: center;">
                     <img id="imgPreview" src="" alt="Vista previa" style="max-height: 150px; border-radius: 6px; border: 1px solid #334155; display: inline-block;">
                     <p style="font-size: 10px; color: #10b981; margin-top: 4px;">✓ Imagen cargada</p>
                 </div>
             </div>
 
-            <div id="loading" class="full">🤖 Analizando imagen con IA... ⏳</div>
+            <div id="loading" class="full">🤖 Subiendo a Drive y analizando con IA... ⏳</div>
 
             <div class="full">
                 <label>Nombre del Producto:</label>
@@ -111,7 +104,7 @@
             </div>
 
             <div>
-                <label>Colección:</label>
+                <label>Coleccion:</label>
                 <input type="text" id="coleccion" placeholder="Colección">
             </div>
 
@@ -134,235 +127,7 @@
         <button class="btn-guardar" onclick="guardarProductoFinal()">💾 Guardar en Catalogo1</button>
     </div>
 
-    <script>
-        const ADMIN_EMAILS = ["ivanglopezp@gmail.com", "equ1strec3@gmail.com", "paulaherro.05@gmail.com"];
-        const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbwJGv1Xkm9wY7u-4Mo8ZirFruvUqSR1RS7kQYIojCvuJQ8loHkiN89InU-GOkT4Qh82/exec";
-        let imagenDriveUrl = "";
-
-        function parseJwt(token) {
-            try {
-                const base64Url = token.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                return JSON.parse(decodeURIComponent(window.atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-            } catch(e) { return null; }
-        }
-
-        function handleCredentialResponse(response) {
-            const payload = parseJwt(response.credential);
-            if (!payload || !payload.email) return;
-            
-            if (ADMIN_EMAILS.includes(payload.email.toLowerCase())) {
-                sessionStorage.setItem("auth", "true");
-                sessionStorage.setItem("userEmail", payload.email);
-                mostrarApp();
-            } else {
-                document.getElementById("loginError").style.display = "block";
-            }
-        }
-
-        function mostrarApp() {
-            document.getElementById("loginScreen").style.display = "none";
-            document.getElementById("appContainer").style.display = "block";
-        }
-
-        function cerrarSesion() {
-            sessionStorage.clear();
-            window.location.reload();
-        }
-
-        window.onload = function() {
-            if (sessionStorage.getItem("auth") === "true") {
-                mostrarApp();
-            }
-        };
-
-        async function procesarImagenConIA() {
-            const input = document.getElementById('fotoInput');
-            const loading = document.getElementById('loading');
-
-            if (input.files.length === 0) return;
-
-            const file = input.files[0];
-            loading.style.display = "block";
-
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-
-            reader.onload = async function () {
-                const base64Data = reader.result;
-
-                try {
-                    const response = await fetch(URL_WEBAPP, {
-                        method: "POST",
-                        body: JSON.stringify({
-                            action: "analizar",
-                            image: base64Data,
-                            mimeType: file.type
-                        })
-                    });
-
-                    const result = await response.json();
-                    loading.style.display = "none";
-
-                    if (result.status === "success") {
-                        document.getElementById('nombre').value = result.sugerencia.nombre || "";
-                        document.getElementById('categoria').value = result.sugerencia.categoria || "";
-                        document.getElementById('categoria_secundaria').value = result.sugerencia.categoria_secundaria || "";
-                        document.getElementById('coleccion').value = result.sugerencia.coleccion || "";
-                        document.getElementById('descripcion').value = result.sugerencia.descripcion || "";
-                        
-                        alert("✨ ¡IA precargó los datos con éxito! Revisa, completa precio/costo/stock y guarda.");
-                    } else {
-                        alert("Error al analizar: " + result.message);
-                    }
-                } catch (error) {
-                    loading.style.display = "none";
-                    alert("Error de conexión: " + error.message);
-                }
-            };
-        }
-
-        async function guardarProductoFinal() {
-            const fileInput = document.getElementById('fotoInput');
-            let base64Imagen = "";
-            let nombreImagen = "producto.jpg";
-
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                nombreImagen = file.name;
-                // Convertir la foto seleccionada a base64 para enviarla al backend
-                base64Imagen = await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => resolve(e.target.result);
-                    reader.readAsDataURL(file);
-                });
-            }
-
-            const producto = {
-                nombre: document.getElementById('nombre').value,
-                precio: document.getElementById('precio').value,
-                costo: document.getElementById('costo').value,
-                categoria: document.getElementById('categoria').value,
-                categoria_secundaria: document.getElementById('categoria_secundaria').value,
-                proveedor: document.getElementById('proveedor').value,
-                coleccion: document.getElementById('coleccion').value,
-                talla: document.getElementById('talla').value,
-                stock: document.getElementById('stock').value,
-                descripcion: document.getElementById('descripcion').value,
-                imagenBase64: base64Imagen,
-                imagenNombre: nombreImagen
-            };
-
-            if (!producto.nombre) {
-                alert("Por favor ingresa un nombre para el producto.");
-                return;
-            }
-
-            try {
-                const response = await fetch(URL_WEBAPP, {
-                    method: "POST",
-                    redirect: "follow",
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({
-                        action: "guardar",
-                        producto: producto
-                    })
-                });
-
-                const textResponse = await response.text();
-                const result = JSON.parse(textResponse);
-
-                if (result.status === "success") {
-                    alert("✅ ¡Imagen guardada en Drive y producto registrado en Catalogo1!");
-                    location.reload();
-                } else {
-                    alert("Error al guardar: " + result.message);
-                }
-            } catch (error) {
-                alert("Error de red al guardar: " + error.message);
-            }
-        }
-
-        let imagenDriveUrl = ""; // Aquí se guardará el link que devuelva Apps Script
-
-        // Función auxiliar para convertir archivo a Base64 mediante Promesa (evita bloqueos)
-        function archivoABase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result);
-                reader.error = error => reject(error);
-            });
-        }
-
-        async function ejecutarSubidaYAnalisis(input) {
-            if (!input.files || input.files.length === 0) return;
-
-            const file = input.files[0];
-            const loading = document.getElementById('loading');
-
-            // 1. Poner nombre personalizado por defecto si está vacío
-            const inputNombre = document.getElementById('nombreImagenPersonalizado');
-            if (!inputNombre.value) {
-                const nombreSinExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-                inputNombre.value = nombreSinExt.replace(/[^a-zA-Z0-9_-]/g, '_');
-            }
-
-            const nombrePersonalizado = inputNombre.value;
-
-            // 2. Mostrar la miniatura (Preview) de inmediato en pantalla
-            try {
-                const base64Data = await archivoABase64(file);
-                document.getElementById('imgPreview').src = base64Data;
-                document.getElementById('previewContainer').style.display = "block";
-
-                // 3. Mostrar indicador de carga de la IA
-                loading.style.display = "block";
-
-                // 4. Enviar al Apps Script (Sube a Drive y consulta a Gemini de una vez)
-                const response = await fetch(URL_WEBAPP, {
-                    method: "POST",
-                    redirect: "follow",
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({
-                        action: "analizar",
-                        image: base64Data,
-                        mimeType: file.type,
-                        nombrePersonalizado: nombrePersonalizado
-                    })
-                });
-
-                const textResponse = await response.text();
-                let result;
-                try {
-                    result = JSON.parse(textResponse);
-                } catch (e) {
-                    throw new Error("Respuesta no válida del servidor: " + textResponse);
-                }
-
-                loading.style.display = "none";
-
-                if (result.status === "success") {
-                    // Precargar campos de la IA
-                    document.getElementById('nombre').value = result.sugerencia.nombre || "";
-                    document.getElementById('categoria').value = result.sugerencia.categoria || "";
-                    document.getElementById('categoria_secundaria').value = result.sugerencia.categoria_secundaria || "";
-                    document.getElementById('coleccion').value = result.sugerencia.coleccion || "";
-                    document.getElementById('descripcion').value = result.sugerencia.descripcion || "";
-                    
-                    // Capturar el enlace de Drive devuelto
-                    imagenDriveUrl = result.imagen_drive || "";
-                    
-                    alert("✨ ¡Foto subida a Drive con éxito y datos precargados por la IA!");
-                } else {
-                    alert("Error en el servidor: " + result.message);
-                }
-
-            } catch (error) {
-                loading.style.display = "none";
-                alert("Error al procesar: " + error.message);
-            }
-        }
-    </script>
+    <!-- Vinculación del script externo ordenado -->
+    <script src="producto.js"></script>
 </body>
 </html>
