@@ -1,7 +1,7 @@
-
 const ADMIN_EMAILS = ["ivanglopezp@gmail.com", "equ1strec3@gmail.com", "paulaherro.05@gmail.com"];
-const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbx9QhOOrI2mmwc6xmGtmq5clQH7rhUqZSXbnF2mMonTlowhbqlEZ_ftsXSi8Ld6yvO-/exec";
+const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbxfuRoNAYZZ2PAalaT9rzNjb0PgW-Ro6yCp4h8i55RvES1SrkprXYYJY6NQU_Pap4sR/exec";
 let imagenDriveUrl = ""; 
+let base64ComprimidoGlobal = "";
 
 function parseJwt(token) {
     try {
@@ -40,17 +40,7 @@ window.onload = function() {
     }
 };
 
-// Convierte archivo a Base64 mediante Promesa para evitar bloqueos
-function archivoABase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-    });
-}
-
-// Ejecuta la vista previa, subida a Drive y análisis de IA al seleccionar la foto
+// Compresor de imagen local (en hold)
 function comprimirImagen(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -60,15 +50,13 @@ function comprimirImagen(file) {
             img.src = event.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 800; // Ancho máximo seguro para la IA y Drive
+                const MAX_WIDTH = 800;
                 const scaleSize = MAX_WIDTH / img.width;
                 canvas.width = MAX_WIDTH;
                 canvas.height = img.height * scaleSize;
 
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                
-                // Comprimir a formato JPEG con calidad del 80%
                 resolve(canvas.toDataURL('image/jpeg', 0.8));
             };
             img.onerror = (error) => reject(error);
@@ -77,11 +65,10 @@ function comprimirImagen(file) {
     });
 }
 
-async function ejecutarSubidaYAnalisis(input) {
+// PASO 1: Solo muestra la previsualización y autocompleta el título si está vacío
+async function mostrarPreviewLocal(input) {
     if (!input.files || input.files.length === 0) return;
-
     const file = input.files[0];
-    const loading = document.getElementById('loading');
 
     const inputNombre = document.getElementById('nombreImagenPersonalizado');
     if (!inputNombre.value) {
@@ -89,28 +76,36 @@ async function ejecutarSubidaYAnalisis(input) {
         inputNombre.value = nombreSinExt.replace(/[^a-zA-Z0-9_-]/g, '_');
     }
 
-    const nombrePersonalizado = inputNombre.value;
+    try {
+        base64ComprimidoGlobal = await comprimirImagen(file);
+        document.getElementById('imgPreview').src = base64ComprimidoGlobal;
+        document.getElementById('previewContainer').style.display = "block";
+    } catch (err) {
+        alert("Error al leer la imagen local.");
+    }
+}
+
+// PASO 2: Botón de envío que sube a Drive, ejecuta la IA y rellena los campos automáticamente
+async function enviarSubidaYAnalisis() {
+    if (!base64ComprimidoGlobal) {
+        alert("Por favor selecciona una imagen primero.");
+        return;
+    }
+
+    const nombrePersonalizado = document.getElementById('nombreImagenPersonalizado').value.trim() || "producto";
+    const loading = document.getElementById('loading');
+    
+    loading.style.display = "block";
+    loading.textContent = "🚀 Subiendo a Drive y consultando a la IA...";
 
     try {
-        loading.style.display = "block";
-        loading.textContent = "🔄 Optimizando imagen y subiendo a Drive...";
-
-        // Comprimir la imagen para que pese poco y pase el filtro de Google sin CORS errors
-        const base64Data = await comprimirImagen(file);
-        
-        // Mostrar vista previa
-        document.getElementById('imgPreview').src = base64Data;
-        document.getElementById('previewContainer').style.display = "block";
-
-        loading.textContent = "🤖 Analizando con IA...";
-
         const response = await fetch(URL_WEBAPP, {
             method: "POST",
             redirect: "follow",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify({
                 action: "analizar",
-                image: base64Data,
+                image: base64ComprimidoGlobal,
                 mimeType: "image/jpeg",
                 nombrePersonalizado: nombrePersonalizado
             })
@@ -127,15 +122,17 @@ async function ejecutarSubidaYAnalisis(input) {
         loading.style.display = "none";
 
         if (result.status === "success") {
+            // Rellenar automáticamente los campos con el JSON de la IA
             document.getElementById('nombre').value = result.sugerencia.nombre || "";
             document.getElementById('categoria').value = result.sugerencia.categoria || "";
             document.getElementById('categoria_secundaria').value = result.sugerencia.categoria_secundaria || "";
             document.getElementById('coleccion').value = result.sugerencia.coleccion || "";
             document.getElementById('descripcion').value = result.sugerencia.descripcion || "";
             
+            // Guardar la URL del último archivo subido a Drive
             imagenDriveUrl = result.imagen_drive || "";
             
-            alert("✨ ¡Foto subida a Drive con éxito y datos precargados por la IA!");
+            alert("✨ ¡Imagen guardada en Drive y datos precargados con éxito! Puedes editarlos o completar precio/costo/stock.");
         } else {
             alert("Error en el servidor: " + result.message);
         }
@@ -146,7 +143,7 @@ async function ejecutarSubidaYAnalisis(input) {
     }
 }
 
-// Guardar producto definitivo vinculado al enlace de Drive ya capturado
+// PASO 3: Guardar el artículo definitivo con toda la info en la nueva fila del Sheet
 async function guardarProductoFinal() {
     const producto = {
         nombre: document.getElementById('nombre').value,
@@ -187,7 +184,7 @@ async function guardarProductoFinal() {
         }
 
         if (result.status === "success") {
-            alert("✅ ¡Producto guardado correctamente en Catalogo1!");
+            alert("✅ ¡Artículo guardado correctamente en Catalogo1!");
             location.reload();
         } else {
             alert("Error al guardar: " + result.message);
