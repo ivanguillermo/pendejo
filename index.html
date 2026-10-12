@@ -120,7 +120,7 @@
 
     <script>
         const ADMIN_EMAILS = ["ivanglopezp@gmail.com", "equ1strec3@gmail.com", "paulaherro.05@gmail.com"];
-        const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbwxvMGGSZ7RefNbGGBHcBvh77wfnEizrOhyMH1UIguB_rCDrrTUDFURCCkfDBYJOBjI/exec";
+        const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbwgnoWOlrHjzXANUH-re_AOfVJd7zaZyvoVA4pgCF7kUOFIxKrGXPekdjZd_1HmI4na/exec";
         let imagenDriveUrl = "";
 
         function parseJwt(token) {
@@ -207,6 +207,21 @@
         }
 
         async function guardarProductoFinal() {
+            const fileInput = document.getElementById('fotoInput');
+            let base64Imagen = "";
+            let nombreImagen = "producto.jpg";
+
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                nombreImagen = file.name;
+                // Convertir la foto seleccionada a base64 para enviarla al backend
+                base64Imagen = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(file);
+                });
+            }
+
             const producto = {
                 nombre: document.getElementById('nombre').value,
                 precio: document.getElementById('precio').value,
@@ -218,7 +233,8 @@
                 talla: document.getElementById('talla').value,
                 stock: document.getElementById('stock').value,
                 descripcion: document.getElementById('descripcion').value,
-                imagen_drive: imagenDriveUrl
+                imagenBase64: base64Imagen,
+                imagenNombre: nombreImagen
             };
 
             if (!producto.nombre) {
@@ -229,15 +245,19 @@
             try {
                 const response = await fetch(URL_WEBAPP, {
                     method: "POST",
+                    redirect: "follow",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({
                         action: "guardar",
                         producto: producto
                     })
                 });
 
-                const result = await response.json();
+                const textResponse = await response.text();
+                const result = JSON.parse(textResponse);
+
                 if (result.status === "success") {
-                    alert("✅ ¡Producto guardado correctamente en Catalogo1!");
+                    alert("✅ ¡Imagen guardada en Drive y producto registrado en Catalogo1!");
                     location.reload();
                 } else {
                     alert("Error al guardar: " + result.message);
