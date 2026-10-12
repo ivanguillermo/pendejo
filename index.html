@@ -58,23 +58,23 @@
 
         <div class="grid">
             <div class="full" style="background: #0f172a; padding: 15px; border-radius: 8px; border: 1px dashed #38bdf8;">
-                <label style="color: #38bdf8; font-weight: bold; margin-bottom: 10px;">📸 Imagen del Producto</label>
+                <label style="color: #38bdf8; font-weight: bold; margin-bottom: 10px;">📸 Imagen del Producto y Análisis IA</label>
                 
-                <!-- Nombre personalizado para el archivo -->
+                <!-- Nombre personalizado para el archivo en Drive -->
                 <div style="margin-bottom: 10px;">
-                    <label style="font-size: 11px; color: #94a3b8;">Nombre para el archivo en Drive:</label>
+                    <label style="font-size: 11px; color: #94a3b8;">Nombre del archivo en Drive:</label>
                     <input type="text" id="nombreImagenPersonalizado" placeholder="Ej: Correa_Cuero_Negro" style="font-size: 13px;">
                 </div>
 
-                <!-- Selector de archivo -->
+                <!-- Selector de archivo (Dispara el proceso de inmediato) -->
                 <div style="margin-bottom: 10px;">
-                    <input type="file" id="fotoInput" accept="image/*" capture="environment" onchange="mostrarPreviewYProcesar(this)" style="font-size: 12px;">
+                    <input type="file" id="fotoInput" accept="image/*" capture="environment" onchange="ejecutarSubidaYAnalisis(this)" style="font-size: 12px;">
                 </div>
 
-                <!-- Contenedor de Preview de la Imagen -->
+                <!-- Contenedor de Preview -->
                 <div id="previewContainer" style="display: none; margin-top: 10px; text-align: center;">
                     <img id="imgPreview" src="" alt="Vista previa" style="max-height: 150px; border-radius: 6px; border: 1px solid #334155; display: inline-block;">
-                    <p style="font-size: 10px; color: #10b981; margin-top: 4px;">✓ Imagen lista para procesar</p>
+                    <p style="font-size: 10px; color: #10b981; margin-top: 4px;">✓ Imagen cargada</p>
                 </div>
             </div>
 
@@ -280,6 +280,87 @@
                 }
             } catch (error) {
                 alert("Error de red al guardar: " + error.message);
+            }
+        }
+
+        let imagenDriveUrl = ""; // Aquí se guardará el link que devuelva Apps Script
+
+        // Función auxiliar para convertir archivo a Base64 mediante Promesa (evita bloqueos)
+        function archivoABase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.error = error => reject(error);
+            });
+        }
+
+        async function ejecutarSubidaYAnalisis(input) {
+            if (!input.files || input.files.length === 0) return;
+
+            const file = input.files[0];
+            const loading = document.getElementById('loading');
+
+            // 1. Poner nombre personalizado por defecto si está vacío
+            const inputNombre = document.getElementById('nombreImagenPersonalizado');
+            if (!inputNombre.value) {
+                const nombreSinExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                inputNombre.value = nombreSinExt.replace(/[^a-zA-Z0-9_-]/g, '_');
+            }
+
+            const nombrePersonalizado = inputNombre.value;
+
+            // 2. Mostrar la miniatura (Preview) de inmediato en pantalla
+            try {
+                const base64Data = await archivoABase64(file);
+                document.getElementById('imgPreview').src = base64Data;
+                document.getElementById('previewContainer').style.display = "block";
+
+                // 3. Mostrar indicador de carga de la IA
+                loading.style.display = "block";
+
+                // 4. Enviar al Apps Script (Sube a Drive y consulta a Gemini de una vez)
+                const response = await fetch(URL_WEBAPP, {
+                    method: "POST",
+                    redirect: "follow",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({
+                        action: "analizar",
+                        image: base64Data,
+                        mimeType: file.type,
+                        nombrePersonalizado: nombrePersonalizado
+                    })
+                });
+
+                const textResponse = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(textResponse);
+                } catch (e) {
+                    throw new Error("Respuesta no válida del servidor: " + textResponse);
+                }
+
+                loading.style.display = "none";
+
+                if (result.status === "success") {
+                    // Precargar campos de la IA
+                    document.getElementById('nombre').value = result.sugerencia.nombre || "";
+                    document.getElementById('categoria').value = result.sugerencia.categoria || "";
+                    document.getElementById('categoria_secundaria').value = result.sugerencia.categoria_secundaria || "";
+                    document.getElementById('coleccion').value = result.sugerencia.coleccion || "";
+                    document.getElementById('descripcion').value = result.sugerencia.descripcion || "";
+                    
+                    // Capturar el enlace de Drive devuelto
+                    imagenDriveUrl = result.imagen_drive || "";
+                    
+                    alert("✨ ¡Foto subida a Drive con éxito y datos precargados por la IA!");
+                } else {
+                    alert("Error en el servidor: " + result.message);
+                }
+
+            } catch (error) {
+                loading.style.display = "none";
+                alert("Error al procesar: " + error.message);
             }
         }
     </script>
