@@ -24,6 +24,9 @@
         input:focus, select:focus, textarea:focus { outline: none; border-color: #38bdf8; }
         textarea { resize: vertical; height: 80px; }
         
+        button.btn-accion { background: #0284c7; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; font-size: 14px; margin-top: 10px; transition: background 0.2s; }
+        button.btn-accion:hover { background: #0369a1; }
+
         button.btn-guardar { background: #10b981; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; margin-top: 20px; transition: background 0.2s; }
         button.btn-guardar:hover { background: #059669; }
         
@@ -53,25 +56,30 @@
         </div>
 
         <div class="grid">
+            <!-- SECCIÓN CARGADOR EN HOLD -->
             <div class="full" style="background: #0f172a; padding: 15px; border-radius: 8px; border: 1px dashed #38bdf8;">
-                <label style="color: #38bdf8; font-weight: bold; margin-bottom: 10px;">📸 Imagen del Producto y Análisis IA</label>
+                <label style="color: #38bdf8; font-weight: bold; margin-bottom: 10px;">📸 1. Cargar Imagen y Título</label>
                 
                 <div style="margin-bottom: 10px;">
-                    <label style="font-size: 11px; color: #94a3b8;">Nombre del archivo en Drive:</label>
+                    <label style="font-size: 11px; color: #94a3b8;">Título / Nombre del archivo en Drive:</label>
                     <input type="text" id="nombreImagenPersonalizado" placeholder="Ej: Correa_Cuero_Negro" style="font-size: 13px;">
                 </div>
 
                 <div style="margin-bottom: 10px;">
-                    <input type="file" id="fotoInput" accept="image/*" capture="environment" onchange="ejecutarSubidaYAnalisis(this)" style="font-size: 12px;">
+                    <input type="file" id="fotoInput" accept="image/*" capture="environment" onchange="mostrarPreviewLocal(this)" style="font-size: 12px;">
                 </div>
 
+                <!-- Preview local (en hold) -->
                 <div id="previewContainer" style="display: none; margin-top: 10px; text-align: center;">
                     <img id="imgPreview" src="" alt="Vista previa" style="max-height: 150px; border-radius: 6px; border: 1px solid #334155; display: inline-block;">
-                    <p style="font-size: 10px; color: #10b981; margin-top: 4px;">✓ Imagen cargada</p>
+                    <p style="font-size: 10px; color: #f59e0b; margin-top: 4px;">⏳ Imagen en espera de envío</p>
                 </div>
+
+                <!-- BOTÓN DE ENVÍO PARA SUBIR A DRIVE Y LANZAR IA -->
+                <button class="btn-accion" onclick="enviarSubidaYAnalisis()">🚀 Enviar a Drive y Procesar con IA</button>
             </div>
 
-            <div id="loading" class="full">🤖 Subiendo a Drive y analizando con IA... ⏳</div>
+            <div id="loading" class="full">🤖 Subiendo imagen a Drive y consultando a la IA... ⏳</div>
 
             <div class="full">
                 <label>Nombre del Producto:</label>
@@ -124,10 +132,10 @@
             </div>
         </div>
 
-        <button class="btn-guardar" onclick="guardarProductoFinal()">💾 Guardar en Catalogo1</button>
+        <button class="btn-guardar" onclick="guardarProductoFinal()">💾 Guardar Artículo en Catalogo1</button>
     </div>
 
-    <!-- Vinculación del script externo ordenado -->
+    <!-- Vinculación del script externo -->
     <script src="producto.js"></script>
 </body>
 </html>
