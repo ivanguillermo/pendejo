@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registrar Producto con IA y Auth</title>
     <!-- Google Identity Services -->
-    <script src="[https://accounts.google.com/gsi/client](https://accounts.google.com/gsi/client)" async defer></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background: #0f172a; color: #f8fafc; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
@@ -40,8 +40,9 @@
         <h2>🔒 Acceso Restringido</h2>
         <p style="color:#94a3b8; font-size:13px; margin: 15px 0 25px 0;">Inicia sesión con tu cuenta de Google autorizada para continuar.</p>
         
+        <!-- ÚNICO BLOQUE DE INICIALIZACIÓN DE GOOGLE OAUTH -->
         <div id="g_id_onload"
-             data-client_id="1051720410997-kc6qojr44e03ofm9r8ni0enng367sauh.apps.googleusercontent.com"
+             data-client_id="366811567796-abf3n9eegpg29qrf2d6qiqp1c4e3fm98.apps.googleusercontent.com"
              data-callback="handleCredentialResponse">
         </div>
         <div class="g_id_signin" data-type="standard" data-size="large" data-theme="filled_black"></div>
@@ -53,11 +54,6 @@
         <div class="header-app">
             <h2>+ Registrar Producto con IA</h2>
             <button class="btn-salir" onclick="cerrarSesion()">Cerrar Sesión</button>
-        </div>
-
-        <div id="g_id_onload"
-             data-client_id="366811567796-abf3n9eegpg29qrf2d6qiqp1c4e3fm98.apps.googleusercontent.com"
-             data-callback="handleCredentialResponse">
         </div>
 
         <div class="grid">
@@ -123,9 +119,9 @@
     </div>
 
     <script>
-        const ADMIN_EMAILS = ["ivanglopezp@gmail.com", "equ1strec3@gmail.com", "paulaherro.05@gmail.com"]; // Agrega tus correos autorizados
-        const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbwxvMGGSZ7RefNbGGBHcBvh77wfnEizrOhyMH1UIguB_rCDrrTUDFURCCkfDBYJOBjI/exec"; // Pega aquí tu URL de Apps Script de esta app
-        let imagenDriveUrl = ""; // Aquí mantienes tu lógica existente para el enlace de Drive si lo manejas aparte
+        const ADMIN_EMAILS = ["ivanglopezp@gmail.com", "equ1strec3@gmail.com", "paulaherro.05@gmail.com"];
+        const URL_WEBAPP = "https://script.google.com/macros/s/AKfycbwxvMGGSZ7RefNbGGBHcBvh77wfnEizrOhyMH1UIguB_rCDrrTUDFURCCkfDBYJOBjI/exec";
+        let imagenDriveUrl = "";
 
         function parseJwt(token) {
             try {
@@ -222,7 +218,7 @@
                 talla: document.getElementById('talla').value,
                 stock: document.getElementById('stock').value,
                 descripcion: document.getElementById('descripcion').value,
-                imagen_drive: imagenDriveUrl // Aquí puedes enlazar tu subida a Drive actual
+                imagen_drive: imagenDriveUrl
             };
 
             if (!producto.nombre) {
@@ -252,5 +248,4 @@
         }
     </script>
 </body>
-</html>
 </html>
