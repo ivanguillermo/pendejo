@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subir Producto con IA</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 40px auto; padding: 20px; background: #f4f4f9; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input[type="file"] { margin: 15px 0; width: 100%; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        #loading { display: none; margin-top: 15px; color: #555; text-align: center; }
+        #resultado { margin-top: 20px; background: #e9ecef; padding: 10px; border-radius: 5px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Subir Producto con IA</h2>
+        <p>Sube una foto de tu producto. La IA extraerá los datos y los guardará en tu Google Sheet.</p>
+        
+        <!-- Input para la foto (permite cámara directa en celulares) -->
+        <input type="file" id="fotoInput" accept="image/*" capture="environment">
+        
+        <button onclick="subirProducto()">Procesar y Guardar</button>
+        
+        <div id="loading">Analizando imagen con IA y guardando en Sheet... ⏳</div>
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        async function subirProducto() {
+            const input = document.getElementById('fotoInput');
+            const loading = document.getElementById('loading');
+            const resultado = document.getElementById('resultado');
+
+            if (input.files.length === 0) {
+                alert("Por favor selecciona o toma una foto primero.");
+                return;
+            }
+
+            const file = input.files[0];
+            loading.style.display = "block";
+            resultado.innerHTML = "";
+
+            // Convertir la imagen a Base64 para enviarla en el JSON
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            
+            reader.onload = async function () {
+                const base64Data = reader.result;
+
+                const payload = {
+                    image: base64Data,
+                    mimeType: file.type,
+                    fileName: file.name
+                };
+
+                // PEGA AQUÍ TU URL DE LA APLICACIÓN WEB DE APPS SCRIPT
+                const urlWebapp = "https://script.google.com/macros/s/AKfycbyCIOXPqwsapLGeTJnzCsAqv5izCgUjZaRmEvFJ9yPyw8D5Dx-iNuCl4zWywhb0b0Qj/exec";
+
+                try {
+                    const response = await fetch(urlWebapp, {
+                        method: "POST",
+                        body: JSON.stringify(payload),
+                        // Nota: Usamos no-cors o un fetch directo. Como Apps Script redirige, 
+                        // a veces fetch directo funciona si se maneja la respuesta:
+                    });
+
+                    const result = await response.json();
+                    loading.style.display = "none";
+
+                    if (result.status === "success") {
+                        resultado.innerHTML = `<strong>¡Éxito! Producto guardado:</strong>\n\n` +
+                            `Nombre: ${result.data.nombre}\n` +
+                            `Categoría: ${result.data.categoria}\n` +
+                            `Descripción: ${result.data.descripcion}`;
+                        input.value = ""; // Limpiar input
+                    } else {
+                        resultado.innerHTML = "Error: " + result.message;
+                    }
+
+                } catch (error) {
+                    loading.style.display = "none";
+                    resultado.innerHTML = "Error de conexión o de script: " + error.message;
+                }
+            };
+        }
+    </script>
+</body>
+</html>
