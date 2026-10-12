@@ -51,6 +51,32 @@ function archivoABase64(file) {
 }
 
 // Ejecuta la vista previa, subida a Drive y análisis de IA al seleccionar la foto
+function comprimirImagen(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 800; // Ancho máximo seguro para la IA y Drive
+                const scaleSize = MAX_WIDTH / img.width;
+                canvas.width = MAX_WIDTH;
+                canvas.height = img.height * scaleSize;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                // Comprimir a formato JPEG con calidad del 80%
+                resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.onerror = (error) => reject(error);
+        };
+        reader.onerror = (error) => reject(error);
+    });
+}
+
 async function ejecutarSubidaYAnalisis(input) {
     if (!input.files || input.files.length === 0) return;
 
@@ -66,11 +92,17 @@ async function ejecutarSubidaYAnalisis(input) {
     const nombrePersonalizado = inputNombre.value;
 
     try {
-        const base64Data = await archivoABase64(file);
+        loading.style.display = "block";
+        loading.textContent = "🔄 Optimizando imagen y subiendo a Drive...";
+
+        // Comprimir la imagen para que pese poco y pase el filtro de Google sin CORS errors
+        const base64Data = await comprimirImagen(file);
+        
+        // Mostrar vista previa
         document.getElementById('imgPreview').src = base64Data;
         document.getElementById('previewContainer').style.display = "block";
 
-        loading.style.display = "block";
+        loading.textContent = "🤖 Analizando con IA...";
 
         const response = await fetch(URL_WEBAPP, {
             method: "POST",
@@ -79,7 +111,7 @@ async function ejecutarSubidaYAnalisis(input) {
             body: JSON.stringify({
                 action: "analizar",
                 image: base64Data,
-                mimeType: file.type,
+                mimeType: "image/jpeg",
                 nombrePersonalizado: nombrePersonalizado
             })
         });
