@@ -40,7 +40,7 @@ window.onload = function() {
     }
 };
 
-// Compresor de imagen local (en hold)
+// Compresor de imagen local optimizado
 function comprimirImagen(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -65,7 +65,7 @@ function comprimirImagen(file) {
     });
 }
 
-// PASO 1: Solo muestra la previsualización y autocompleta el título si está vacío
+// PASO 1: Muestra la previsualización y autocompleta el título si está vacío
 async function mostrarPreviewLocal(input) {
     if (!input.files || input.files.length === 0) return;
     const file = input.files[0];
@@ -81,6 +81,7 @@ async function mostrarPreviewLocal(input) {
         document.getElementById('imgPreview').src = base64ComprimidoGlobal;
         document.getElementById('previewContainer').style.display = "block";
     } catch (err) {
+        console.error("Error al leer la imagen local:", err);
         alert("Error al leer la imagen local.");
     }
 }
@@ -112,11 +113,16 @@ async function enviarSubidaYAnalisis() {
         });
 
         const textResponse = await response.text();
+        
+        // Imprimimos la respuesta cruda en la consola para depuración
+        console.log("Respuesta cruda del servidor (analizar):", textResponse);
+
         let result;
         try {
             result = JSON.parse(textResponse);
         } catch (e) {
-            throw new Error("Respuesta no válida del servidor: " + textResponse);
+            console.error("El servidor no devolvió un JSON válido:", textResponse);
+            throw new Error("Respuesta no válida del servidor (ver consola para detalles).");
         }
 
         loading.style.display = "none";
@@ -129,7 +135,7 @@ async function enviarSubidaYAnalisis() {
             document.getElementById('coleccion').value = result.sugerencia.coleccion || "";
             document.getElementById('descripcion').value = result.sugerencia.descripcion || "";
             
-            // Guardar la URL del último archivo subido a Drive
+            // Guardar la URL del archivo subido a Drive
             imagenDriveUrl = result.imagen_drive || "";
             
             alert("✨ ¡Imagen guardada en Drive y datos precargados con éxito! Puedes editarlos o completar precio/costo/stock.");
@@ -139,6 +145,7 @@ async function enviarSubidaYAnalisis() {
 
     } catch (error) {
         loading.style.display = "none";
+        console.error("Detalle completo del error en fetch (analizar):", error);
         alert("Error al procesar: " + error.message);
     }
 }
@@ -176,11 +183,16 @@ async function guardarProductoFinal() {
         });
 
         const textResponse = await response.text();
+        
+        // Imprimimos la respuesta cruda para depurar si ocurre un fallo al guardar
+        console.log("Respuesta cruda del servidor (guardar):", textResponse);
+
         let result;
         try {
             result = JSON.parse(textResponse);
         } catch (e) {
-            throw new Error("Respuesta no válida al guardar: " + textResponse);
+            console.error("El servidor no devolvió un JSON válido al guardar:", textResponse);
+            throw new Error("Respuesta no válida al guardar (ver consola para detalles).");
         }
 
         if (result.status === "success") {
@@ -190,6 +202,7 @@ async function guardarProductoFinal() {
             alert("Error al guardar: " + result.message);
         }
     } catch (error) {
+        console.error("Detalle completo del error en fetch (guardar):", error);
         alert("Error de red al guardar: " + error.message);
     }
 }
