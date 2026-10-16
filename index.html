@@ -1,141 +1,145 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registrar Producto con IA y Auth</title>
-    <!-- Google Identity Services -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <style>
-        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background: #0f172a; color: #f8fafc; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        
-        #loginScreen { text-align: center; width: 100%; max-width: 400px; background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid #334155; }
-        #appContainer { display: none; width: 100%; max-width: 650px; background: #1e293b; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid #334155; }
-        
-        .header-app { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 10px; }
-        h2 { color: #38bdf8; margin: 0; font-size: 18px; }
-        .btn-salir { background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; }
-
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .full { grid-column: span 2; }
-        label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 5px; }
-        input, select, textarea { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: white; font-size: 14px; }
-        input:focus, select:focus, textarea:focus { outline: none; border-color: #38bdf8; }
-        textarea { resize: vertical; height: 80px; }
-        
-        button.btn-accion { background: #0284c7; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; font-size: 14px; margin-top: 10px; transition: background 0.2s; }
-        button.btn-accion:hover { background: #0369a1; }
-
-        button.btn-guardar { background: #10b981; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; margin-top: 20px; transition: background 0.2s; }
-        button.btn-guardar:hover { background: #059669; }
-        
-        #loading { display: none; text-align: center; color: #38bdf8; margin: 10px 0; font-weight: 500; font-size: 13px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informes a Excel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --tx:#1d2330; --ac:#0b6bcb; --warn:#fff3cd; --bd:#d5d9e0; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14171d; --card:#1e232c; --tx:#e8ebf0; --ac:#4da3ff; --warn:#4a3d10; --bd:#39414f; } }
+  * { box-sizing:border-box; font-family:system-ui,sans-serif; }
+  body { margin:0; background:var(--bg); color:var(--tx); padding:16px; max-width:1100px; margin:auto; }
+  .card { background:var(--card); border:1px solid var(--bd); border-radius:10px; padding:14px; margin-bottom:14px; }
+  input, select, textarea { background:var(--card); color:var(--tx); border:1px solid var(--bd); border-radius:6px; padding:6px; width:100%; }
+  button { background:var(--ac); color:#fff; border:0; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.5; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
+  .row > * { flex:1; min-width:140px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:8px; margin:10px 0; }
+  .grid label { font-size:12px; opacity:.75; display:block; }
+  .scroll { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; min-width:760px; font-size:13px; }
+  td, th { border:1px solid var(--bd); padding:2px; }
+  th { background:var(--bg); font-size:12px; }
+  tr.rev td { background:var(--warn); }
+  #estado { margin:8px 0; font-size:14px; }
+</style>
 </head>
 <body>
+<h2>📋 Informes de mantenimiento → Excel</h2>
 
-    <!-- PANTALLA 1: LOGIN DE GOOGLE -->
-    <div id="loginScreen">
-        <h2>🔒 Acceso Restringido</h2>
-        <p style="color:#94a3b8; font-size:13px; margin: 15px 0 25px 0;">Inicia sesión con tu cuenta de Google autorizada para continuar.</p>
-        
-        <div id="g_id_onload"
-             data-client_id="366811567796-abf3n9eegpg29qrf2d6qiqp1c4e3fm98.apps.googleusercontent.com"
-             data-callback="handleCredentialResponse">
-        </div>
-        <div class="g_id_signin" data-type="standard" data-size="large" data-theme="filled_black"></div>
-        <div id="loginError" style="color:#ef4444; margin-top:15px; display:none; font-size: 13px;">⛔ Acceso no autorizado para este correo.</div>
-    </div>
+<div class="card">
+  <div class="row">
+    <div><label>PIN</label><input id="pin" type="password" placeholder="PIN de acceso"></div>
+    <div style="flex:3"><label>Fotos o PDF del informe (puedes elegir varias páginas)</label>
+      <input id="archivos" type="file" accept="image/*,application/pdf" multiple></div>
+    <button id="btnT" onclick="transcribir()">Transcribir</button>
+  </div>
+  <div id="estado"></div>
+</div>
 
-    <!-- PANTALLA 2: FORMULARIO DE PRODUCTO -->
-    <div id="appContainer">
-        <div class="header-app">
-            <h2>+ Registrar Producto con IA</h2>
-            <button class="btn-salir" onclick="cerrarSesion()">Cerrar Sesión</button>
-        </div>
+<div id="resultado"></div>
+<button id="btnX" style="display:none" onclick="descargar()">⬇️ Descargar Excel</button>
 
-        <div class="grid">
-            <!-- SECCIÓN CARGADOR EN HOLD -->
-            <div class="full" style="background: #0f172a; padding: 15px; border-radius: 8px; border: 1px dashed #38bdf8;">
-                <label style="color: #38bdf8; font-weight: bold; margin-bottom: 10px;">📸 1. Cargar Imagen y Título</label>
-                
-                <div style="margin-bottom: 10px;">
-                    <label style="font-size: 11px; color: #94a3b8;">Título / Nombre del archivo en Drive:</label>
-                    <input type="text" id="nombreImagenPersonalizado" placeholder="Ej: Correa_Cuero_Negro" style="font-size: 13px;">
-                </div>
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCWpVFMucJNuDjxkaJvLWN41kO5X9ojd5GvkyWA5Z5sxtjPZtmuHemjT3zCpJ5naZS/exec";
+const ESTADOS = { ok: "✓ Realizado", no: "✗ No / N/A", valor: "Valor", vacio: "" };
+let ordenes = [];
+const $ = id => document.getElementById(id);
+$("pin").value = localStorage.getItem("inf_pin") || "";
 
-                <div style="margin-bottom: 10px;">
-                    <input type="file" id="fotoInput" accept="image/*" capture="environment" onchange="mostrarPreviewLocal(this)" style="font-size: 12px;">
-                </div>
+function aB64(file) {
+  return new Promise((ok, err) => { const r = new FileReader(); r.onload = () => ok(r.result.split(",")[1]); r.onerror = err; r.readAsDataURL(file); });
+}
 
-                <!-- Preview local (en hold) -->
-                <div id="previewContainer" style="display: none; margin-top: 10px; text-align: center;">
-                    <img id="imgPreview" src="" alt="Vista previa" style="max-height: 150px; border-radius: 6px; border: 1px solid #334155; display: inline-block;">
-                    <p style="font-size: 10px; color: #f59e0b; margin-top: 4px;">⏳ Imagen en espera de envío</p>
-                </div>
+// Las fotos se reducen a 2000 px (la letra a mano necesita resolución); los PDF van tal cual
+function preparar(file) {
+  if (!file.type.startsWith("image/")) return aB64(file).then(d => ({ mime: file.type, data: d }));
+  return new Promise((ok, err) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, 2000 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas"); c.width = img.width * k; c.height = img.height * k;
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      ok({ mime: "image/jpeg", data: c.toDataURL("image/jpeg", 0.9).split(",")[1] });
+    };
+    img.onerror = () => err(new Error("No se pudo leer " + file.name));
+    img.src = url;
+  });
+}
 
-                <!-- BOTÓN DE ENVÍO PARA SUBIR A DRIVE Y LANZAR IA -->
-                <button class="btn-accion" onclick="enviarSubidaYAnalisis()">🚀 Enviar a Drive y Procesar con IA</button>
-            </div>
+async function transcribir() {
+  const files = [...$("archivos").files];
+  if (!files.length) return alert("Elige al menos un archivo");
+  if (SCRIPT_URL.startsWith("PEGA")) return alert("Falta pegar la URL del Apps Script en SCRIPT_URL");
+  localStorage.setItem("inf_pin", $("pin").value);
+  $("btnT").disabled = true; $("estado").textContent = "⏳ Leyendo el informe (puede tardar ~30 s)...";
+  try {
+    const archivos = await Promise.all(files.map(preparar));
+    const res = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "transcribir", pin: $("pin").value, archivos }) });
+    const r = await res.json();
+    if (r.status !== "success") throw new Error(r.message);
+    ordenes = r.ordenes;
+    const dudas = ordenes.reduce((n, o) => n + (o.operaciones || []).filter(x => x.revisar).length, 0);
+    $("estado").textContent = `✅ ${ordenes.length} orden(es) leída(s). ${dudas ? "Revisa las " + dudas + " fila(s) amarillas." : "Sin dudas marcadas."} Corrige lo que haga falta antes de descargar.`;
+    render();
+  } catch (e) { $("estado").textContent = "❌ " + e.message; }
+  $("btnT").disabled = false;
+}
 
-            <div id="loading" class="full">🤖 Subiendo imagen a Drive y consultando a la IA... ⏳</div>
+function inp(obj, key) { const i = document.createElement("input"); i.value = obj[key] ?? ""; i.oninput = () => { obj[key] = i.value; }; return i; }
+function campo(obj, key, etiqueta) { const d = document.createElement("div"); const l = document.createElement("label"); l.textContent = etiqueta; d.append(l, inp(obj, key)); return d; }
 
-            <div class="full">
-                <label>Nombre del Producto:</label>
-                <input type="text" id="nombre" placeholder="Ej: Correa Minimalista">
-            </div>
+function render() {
+  const cont = $("resultado"); cont.innerHTML = "";
+  ordenes.forEach(o => {
+    o.operaciones = o.operaciones || [];
+    const card = document.createElement("div"); card.className = "card";
+    const g = document.createElement("div"); g.className = "grid";
+    [["ot","OT"],["fecha_ejecucion","Fecha ejecución"],["descripcion","Descripción"],["puesto_resp","Puesto resp."],["ubicacion","Ubicación"],["equipo","Equipo"],["subequipo","Subequipo"]]
+      .forEach(([k, l]) => g.append(campo(o, k, l)));
+    const tb = document.createElement("table");
+    tb.innerHTML = "<tr><th>Op</th><th>SOp</th><th>Operación</th><th>Plan h</th><th>Real h</th><th>Estado</th><th>Observación</th><th>Dudosa</th></tr>";
+    o.operaciones.forEach(x => {
+      const tr = document.createElement("tr"); if (x.revisar) tr.className = "rev";
+      [["op"],["sop"],["operacion"],["plan_h"],["real_h"]].forEach(([k]) => { const td = document.createElement("td"); td.append(inp(x, k)); tr.append(td); });
+      const sel = document.createElement("select");
+      Object.keys(ESTADOS).forEach(k => { const op = new Option(ESTADOS[k] || "(vacío)", k); sel.add(op); });
+      sel.value = x.estado || "vacio"; sel.onchange = () => { x.estado = sel.value; };
+      const tdE = document.createElement("td"); tdE.append(sel);
+      const tdO = document.createElement("td"); tdO.append(inp(x, "observacion"));
+      const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!x.revisar;
+      cb.onchange = () => { x.revisar = cb.checked; tr.className = cb.checked ? "rev" : ""; };
+      const tdC = document.createElement("td"); tdC.append(cb);
+      tr.append(tdE, tdO, tdC); tb.append(tr);
+    });
+    const sc = document.createElement("div"); sc.className = "scroll"; sc.append(tb);
+    const nl = document.createElement("label"); nl.textContent = "Notas a mano";
+    const ta = document.createElement("textarea"); ta.rows = 3; ta.value = o.notas || ""; ta.oninput = () => { o.notas = ta.value; };
+    const g2 = document.createElement("div"); g2.className = "grid";
+    [["realizado_por","Realizado por"],["cargo","Cargo"],["fecha_fin","Fecha fin"],["tiempo_total_plan","Total plan"],["tiempo_total_real","Total real"]]
+      .forEach(([k, l]) => g2.append(campo(o, k, l)));
+    card.append(g, sc, nl, ta, g2); cont.append(card);
+  });
+  $("btnX").style.display = ordenes.length ? "inline-block" : "none";
+}
 
-            <div>
-                <label>Precio ($):</label>
-                <input type="number" step="0.01" id="precio" placeholder="0.00">
-            </div>
-
-            <div>
-                <label>Costo ($):</label>
-                <input type="number" step="0.01" id="costo" placeholder="0.00">
-            </div>
-
-            <div>
-                <label>Categoría:</label>
-                <input type="text" id="categoria" placeholder="Categoría detectada">
-            </div>
-
-            <div>
-                <label>Subcategoría:</label>
-                <input type="text" id="categoria_secundaria" placeholder="Subcategoría">
-            </div>
-
-            <div>
-                <label>Proveedor:</label>
-                <input type="text" id="proveedor" placeholder="Nombre del proveedor">
-            </div>
-
-            <div>
-                <label>Coleccion:</label>
-                <input type="text" id="coleccion" placeholder="Colección">
-            </div>
-
-            <div>
-                <label>Talla / Medida:</label>
-                <input type="text" id="talla" placeholder="Ej: Única">
-            </div>
-
-            <div>
-                <label>Stock:</label>
-                <input type="number" id="stock" placeholder="0">
-            </div>
-
-            <div class="full">
-                <label>Descripción:</label>
-                <textarea id="descripcion" placeholder="Detalle del producto"></textarea>
-            </div>
-        </div>
-
-        <button class="btn-guardar" onclick="guardarProductoFinal()">💾 Guardar Artículo en Catalogo1</button>
-    </div>
-
-    <!-- Vinculación del script externo -->
-    <script src="producto.js"></script>
+function descargar() {
+  const wb = XLSX.utils.book_new();
+  const cab = ordenes.map(o => ({ OT: o.ot, Fecha: o.fecha_ejecucion, Descripcion: o.descripcion, "Puesto resp.": o.puesto_resp, Ubicacion: o.ubicacion,
+    Equipo: o.equipo, Subequipo: o.subequipo, "Realizado por": o.realizado_por, Cargo: o.cargo, "Fecha fin": o.fecha_fin, "Total plan": o.tiempo_total_plan, "Total real": o.tiempo_total_real }));
+  const ops = [];
+  ordenes.forEach(o => (o.operaciones || []).forEach(x => ops.push({ OT: o.ot, Fecha: o.fecha_ejecucion, Equipo: o.equipo, Op: x.op, SOp: x.sop,
+    Operacion: x.operacion, "Plan (h)": x.plan_h, "Real (h)": x.real_h, Estado: ESTADOS[x.estado] || "", Observacion: x.observacion, Dudosa: x.revisar ? "SI" : "" })));
+  const notas = ordenes.filter(o => o.notas).map(o => ({ OT: o.ot, Equipo: o.equipo, Notas: o.notas }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cab), "Ordenes");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ops), "Operaciones");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(notas.length ? notas : [{ OT: "", Equipo: "", Notas: "" }]), "Notas");
+  XLSX.writeFile(wb, "informes_" + new Date().toISOString().slice(0, 10) + ".xlsx");
+}
+</script>
 </body>
 </html>
