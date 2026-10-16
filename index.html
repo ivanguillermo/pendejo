@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Informes a Excel</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root { --bg:#f5f6f8; --card:#fff; --tx:#1d2330; --ac:#0b6bcb; --warn:#fff3cd; --bd:#d5d9e0; }
   @media (prefers-color-scheme: dark) { :root { --bg:#14171d; --card:#1e232c; --tx:#e8ebf0; --ac:#4da3ff; --warn:#4a3d10; --bd:#39414f; } }
@@ -40,11 +39,11 @@
 </div>
 
 <div id="resultado"></div>
-<button id="btnX" style="display:none" onclick="descargar()">⬇️ Descargar Excel</button>
+<button id="btnX" style="display:none" onclick="guardar()">💾 Guardar en Google Sheet</button>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyhEmvUGTJL62Fpei9abPuTOZXj9qnZ60gKsj8R9vDOcXRQZ9TJQvsdDedeYu7VZiTO/exec";
-const ESTADOS = { ok: "✓ Realizado", no: "✗ No / N/A", valor: "Valor", vacio: "" };
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtMCnWr5IfOjpOX3eTDzLqpj5a3O6_tgbooNcQZpK1h_pD21za7bcUhXz3VBVWpTvQ/exec";
+const ESTADOS = { ok: "✓ Realizado", no: "✗ No / N/A", valor: "Valor", vacio: "" }; // solo para el menú de la tabla
 let ordenes = [];
 const $ = id => document.getElementById(id);
 $("pin").value = localStorage.getItem("inf_pin") || "";
@@ -70,7 +69,20 @@ function preparar(file) {
   });
 }
 
+async function llamar(payload, ms = 180000) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+  try {
+    const res = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload), signal: ctl.signal });
+    const r = await res.json();
+    if (r.status !== "success") throw new Error(r.message);
+    return r;
+  } catch (e) {
+    throw new Error(e.name === "AbortError" ? "Tardó más de 3 minutos. Mira la pestaña Ejecuciones del Apps Script." : e.message);
+  } finally { clearTimeout(t); }
+}
+
 async function transcribir() {
+  let iv;
   const files = [...$("archivos").files];
   if (!files.length) return alert("Elige al menos un archivo");
   if (SCRIPT_URL.startsWith("PEGA")) return alert("Falta pegar la URL del Apps Script en SCRIPT_URL");
@@ -78,15 +90,15 @@ async function transcribir() {
   $("btnT").disabled = true; $("estado").textContent = "⏳ Leyendo el informe (puede tardar ~30 s)...";
   try {
     const archivos = await Promise.all(files.map(preparar));
-    const res = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "transcribir", pin: $("pin").value, archivos }) });
-    const r = await res.json();
-    if (r.status !== "success") throw new Error(r.message);
+    let seg = 0;
+    iv = setInterval(() => { $("estado").textContent = "⏳ Leyendo el informe... " + (++seg) + " s"; }, 1000);
+    const r = await llamar({ action: "transcribir", pin: $("pin").value, archivos });
     ordenes = r.ordenes;
     const dudas = ordenes.reduce((n, o) => n + (o.operaciones || []).filter(x => x.revisar).length, 0);
     $("estado").textContent = `✅ ${ordenes.length} orden(es) leída(s). ${dudas ? "Revisa las " + dudas + " fila(s) amarillas." : "Sin dudas marcadas."} Corrige lo que haga falta antes de descargar.`;
     render();
   } catch (e) { $("estado").textContent = "❌ " + e.message; }
+  clearInterval(iv);
   $("btnT").disabled = false;
 }
 
@@ -127,18 +139,13 @@ function render() {
   $("btnX").style.display = ordenes.length ? "inline-block" : "none";
 }
 
-function descargar() {
-  const wb = XLSX.utils.book_new();
-  const cab = ordenes.map(o => ({ OT: o.ot, Fecha: o.fecha_ejecucion, Descripcion: o.descripcion, "Puesto resp.": o.puesto_resp, Ubicacion: o.ubicacion,
-    Equipo: o.equipo, Subequipo: o.subequipo, "Realizado por": o.realizado_por, Cargo: o.cargo, "Fecha fin": o.fecha_fin, "Total plan": o.tiempo_total_plan, "Total real": o.tiempo_total_real }));
-  const ops = [];
-  ordenes.forEach(o => (o.operaciones || []).forEach(x => ops.push({ OT: o.ot, Fecha: o.fecha_ejecucion, Equipo: o.equipo, Op: x.op, SOp: x.sop,
-    Operacion: x.operacion, "Plan (h)": x.plan_h, "Real (h)": x.real_h, Estado: ESTADOS[x.estado] || "", Observacion: x.observacion, Dudosa: x.revisar ? "SI" : "" })));
-  const notas = ordenes.filter(o => o.notas).map(o => ({ OT: o.ot, Equipo: o.equipo, Notas: o.notas }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cab), "Ordenes");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ops), "Operaciones");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(notas.length ? notas : [{ OT: "", Equipo: "", Notas: "" }]), "Notas");
-  XLSX.writeFile(wb, "informes_" + new Date().toISOString().slice(0, 10) + ".xlsx");
+async function guardar() {
+  $("btnX").disabled = true; $("estado").textContent = "💾 Guardando en tu Google Sheet...";
+  try {
+    const r = await llamar({ action: "guardar", pin: $("pin").value, ordenes });
+    $("estado").textContent = `✅ Guardado: ${ordenes.length} orden(es) y ${r.filas} fila(s) de operaciones en tu Google Sheet (hojas "Ordenes" y "Operaciones").`;
+  } catch (e) { $("estado").textContent = "❌ " + e.message; }
+  $("btnX").disabled = false;
 }
 </script>
 </body>
