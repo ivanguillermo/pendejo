@@ -4,17 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Informes a Excel</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b6bcb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Informes">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
 <style>
-  :root { --bg:#f5f6f8; --card:#fff; --tx:#1d2330; --ac:#0b6bcb; --warn:#fff3cd; --bd:#d5d9e0; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#14171d; --card:#1e232c; --tx:#e8ebf0; --ac:#4da3ff; --warn:#4a3d10; --bd:#39414f; } }
+  :root { --bg:#f5f6f8; --card:#fff; --tx:#1d2330; --ac:#0b6bcb; --warn:#fff3cd; --bd:#d5d9e0; --sec:#5b6577; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14171d; --card:#1e232c; --tx:#e8ebf0; --ac:#4da3ff; --warn:#4a3d10; --bd:#39414f; --sec:#8a94a6; } }
   * { box-sizing:border-box; font-family:system-ui,sans-serif; }
   body { margin:0; background:var(--bg); color:var(--tx); padding:16px; max-width:1100px; margin:auto; }
   .card { background:var(--card); border:1px solid var(--bd); border-radius:10px; padding:14px; margin-bottom:14px; }
   input, select, textarea { background:var(--card); color:var(--tx); border:1px solid var(--bd); border-radius:6px; padding:6px; width:100%; }
-  button { background:var(--ac); color:#fff; border:0; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer; }
-  button:disabled { opacity:.5; }
+  button, .btn { background:var(--ac); color:#fff; border:0; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer; font-size:14px; display:inline-block; text-align:center; }
+  button.sec, .btn.sec { background:transparent; color:var(--ac); border:1px solid var(--ac); }
+  button:disabled { opacity:.45; }
+  .btn input { display:none; }
   .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
   .row > * { flex:1; min-width:140px; }
+  .acciones { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .acciones > * { flex:1 1 150px; }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:8px; margin:10px 0; }
   .grid label { font-size:12px; opacity:.75; display:block; }
   .scroll { overflow-x:auto; }
@@ -22,7 +33,17 @@
   td, th { border:1px solid var(--bd); padding:2px; }
   th { background:var(--bg); font-size:12px; }
   tr.rev td { background:var(--warn); }
-  #estado { margin:8px 0; font-size:14px; }
+  #estado { margin:10px 0 0; font-size:14px; line-height:1.4; }
+  #estado a { color:var(--ac); font-weight:600; }
+  .thumbs { display:grid; grid-template-columns:repeat(auto-fill,minmax(105px,1fr)); gap:8px; margin-top:12px; }
+  .th { position:relative; border:1px solid var(--bd); border-radius:8px; overflow:hidden; background:var(--bg); }
+  .th img { width:100%; height:120px; object-fit:cover; display:block; }
+  .th .pdf { height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; padding:4px; text-align:center; word-break:break-all; }
+  .th .n { position:absolute; top:4px; left:4px; background:var(--ac); color:#fff; border-radius:10px; font-size:11px; padding:1px 7px; font-weight:700; }
+  .th .ctl { display:flex; }
+  .th .ctl button { flex:1; border-radius:0; padding:6px 0; background:var(--card); color:var(--tx); border:0; border-top:1px solid var(--bd); font-size:14px; }
+  .th .ctl button + button { border-left:1px solid var(--bd); }
+  .ayuda { font-size:12px; color:var(--sec); margin:8px 0 0; }
 </style>
 </head>
 <body>
@@ -30,23 +51,43 @@
 
 <div class="card">
   <div class="row">
-    <div><label>Pon el PIN</label><input id="pin" type="password" placeholder="PIN de acceso"></div>
-    <div style="flex:3"><label>Fotos o PDF del informe (puedes elegir varias páginas)</label>
-      <input id="archivos" type="file" accept="image/*,application/pdf" multiple></div>
-    <button id="btnT" onclick="transcribir()">Transcribir</button>
+    <div style="max-width:220px"><label>Pon el PIN</label><input id="pin" type="password" placeholder="PIN de acceso"></div>
+  </div>
+
+  <div class="acciones">
+    <label class="btn">🖼️ Elegir fotos / PDF<input id="archivos" type="file" accept="image/*,application/pdf" multiple onchange="agregar(this)"></label>
+    <label class="btn sec">📷 Tomar foto<input id="camara" type="file" accept="image/*" capture="environment" onchange="agregar(this)"></label>
+  </div>
+  <p class="ayuda">Puedes agregar fotos en varias tandas; se acumulan. Ordénalas como están las páginas (◀ ▶), gira las que salgan de lado (↻) y quita las malas (✕).</p>
+
+  <div class="thumbs" id="thumbs"></div>
+
+  <div class="acciones">
+    <button id="btnT" onclick="transcribir()" disabled>🧠 Transcribir todo</button>
+    <button id="btnPDF" class="sec" onclick="descargarPDF()" disabled>📄 Descargar PDF</button>
+    <button id="btnDrive" class="sec" onclick="subirDrive()" disabled>☁️ Subir PDF a Drive</button>
+    <button id="btnLimpiar" class="sec" onclick="limpiar()" disabled>🗑️ Limpiar todo</button>
   </div>
   <div id="estado"></div>
 </div>
 
 <div id="resultado"></div>
-<button id="btnX" style="display:none" onclick="guardar()">💾 Guardar en Google Sheet</button>
+<div class="acciones" id="accRes" style="display:none">
+  <button id="btnX" onclick="guardar()">💾 Guardar en Google Sheet</button>
+  <button id="btnXls" class="sec" onclick="descargarExcel()">⬇️ Descargar Excel</button>
+</div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIoJhYviWue0bfGwM94P50jwFjm6z5cTjTn4Hf45nXPwQrziv07IAzQc8i2GKRhDGr/exec";
 const ESTADOS = { ok: "✓ Realizado", no: "✗ No / N/A", valor: "Valor", vacio: "" }; // solo para el menú de la tabla
+const MAX_B64 = 18e6; // Gemini acepta ~20 MB por petición
 let ordenes = [];
+let fotos = []; // {mime, data(base64), w, h, name, pdf}
 const $ = id => document.getElementById(id);
 $("pin").value = localStorage.getItem("inf_pin") || "";
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 function aB64(file) {
   return new Promise((ok, err) => { const r = new FileReader(); r.onload = () => ok(r.result.split(",")[1]); r.onerror = err; r.readAsDataURL(file); });
@@ -54,21 +95,132 @@ function aB64(file) {
 
 // Las fotos se reducen a 2000 px (la letra a mano necesita resolución); los PDF van tal cual
 function preparar(file) {
-  if (!file.type.startsWith("image/")) return aB64(file).then(d => ({ mime: file.type, data: d }));
+  if (!file.type.startsWith("image/")) return aB64(file).then(d => ({ mime: file.type || "application/pdf", data: d, name: file.name, pdf: true }));
   return new Promise((ok, err) => {
     const img = new Image(), url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
       const k = Math.min(1, 2000 / Math.max(img.width, img.height));
-      const c = document.createElement("canvas"); c.width = img.width * k; c.height = img.height * k;
+      const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      ok({ mime: "image/jpeg", data: c.toDataURL("image/jpeg", 0.9).split(",")[1] });
+      ok({ mime: "image/jpeg", data: c.toDataURL("image/jpeg", 0.9).split(",")[1], w: c.width, h: c.height, name: file.name });
     };
     img.onerror = () => err(new Error("No se pudo leer " + file.name));
     img.src = url;
   });
 }
 
+function estado(t) { $("estado").textContent = t; }
+
+async function agregar(input) {
+  const files = [...input.files]; input.value = "";
+  if (!files.length) return;
+  for (let i = 0; i < files.length; i++) {
+    estado(`⏳ Preparando archivo ${i + 1} de ${files.length}...`);
+    try { fotos.push(await preparar(files[i])); renderFotos(); } catch (e) { estado("❌ " + e.message); return; }
+  }
+  estado(`✅ ${fotos.length} archivo(s) listo(s).`);
+}
+
+function renderFotos() {
+  const cont = $("thumbs"); cont.innerHTML = "";
+  fotos.forEach((f, i) => {
+    const d = document.createElement("div"); d.className = "th";
+    if (f.pdf) {
+      const p = document.createElement("div"); p.className = "pdf"; p.textContent = "📄 " + f.name; d.append(p);
+    } else {
+      const im = document.createElement("img"); im.src = "data:image/jpeg;base64," + f.data; d.append(im);
+    }
+    const n = document.createElement("span"); n.className = "n"; n.textContent = i + 1; d.append(n);
+    const ctl = document.createElement("div"); ctl.className = "ctl";
+    const mk = (txt, fn, dis) => { const b = document.createElement("button"); b.textContent = txt; b.onclick = fn; b.disabled = !!dis; return b; };
+    ctl.append(mk("◀", () => mover(i, -1), i === 0), mk("▶", () => mover(i, 1), i === fotos.length - 1));
+    if (!f.pdf) ctl.append(mk("↻", () => rotar(i)));
+    ctl.append(mk("✕", () => { fotos.splice(i, 1); renderFotos(); }));
+    d.append(ctl); cont.append(d);
+  });
+  const hay = fotos.length > 0, hayImg = fotos.some(f => !f.pdf);
+  $("btnT").disabled = !hay; $("btnLimpiar").disabled = !hay;
+  $("btnPDF").disabled = !hayImg; $("btnDrive").disabled = !hayImg;
+}
+
+function mover(i, d) { const j = i + d; if (j < 0 || j >= fotos.length) return; [fotos[i], fotos[j]] = [fotos[j], fotos[i]]; renderFotos(); }
+
+function rotar(i) {
+  const f = fotos[i], img = new Image();
+  img.onload = () => {
+    const c = document.createElement("canvas"); c.width = img.height; c.height = img.width;
+    const x = c.getContext("2d"); x.translate(c.width, 0); x.rotate(Math.PI / 2); x.drawImage(img, 0, 0);
+    f.data = c.toDataURL("image/jpeg", 0.9).split(",")[1]; f.w = c.width; f.h = c.height; renderFotos();
+  };
+  img.src = "data:image/jpeg;base64," + f.data;
+}
+
+function limpiar() {
+  if (!confirm("¿Quitar todas las fotos y el resultado actual?")) return;
+  fotos = []; ordenes = []; renderFotos(); render(); estado("");
+}
+
+// ---------------------------------------------------------------------
+//  PDF (se arma aquí mismo con las fotos, sin librerías)
+// ---------------------------------------------------------------------
+function crearPDF(imgs) {
+  const enc = new TextEncoder(), chunks = [], offs = []; let len = 0;
+  const put = x => { const b = typeof x === "string" ? enc.encode(x) : x; chunks.push(b); len += b.length; };
+  const obj = (n, body) => { offs[n] = len; put(n + " 0 obj\n" + body + "\nendobj\n"); };
+  const n = imgs.length;
+  put("%PDF-1.4\n");
+  obj(1, "<< /Type /Catalog /Pages 2 0 R >>");
+  obj(2, "<< /Type /Pages /Kids [" + imgs.map((_, i) => (3 + i * 3) + " 0 R").join(" ") + "] /Count " + n + " >>");
+  imgs.forEach((im, i) => {
+    const p = 3 + i * 3, land = im.w > im.h, W = land ? 842 : 595, H = land ? 595 : 842, m = 20;
+    const k = Math.min((W - 2 * m) / im.w, (H - 2 * m) / im.h), w = im.w * k, h = im.h * k, x = (W - w) / 2, y = (H - h) / 2;
+    obj(p, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im0 ${p + 2} 0 R >> >> /Contents ${p + 1} 0 R >>`);
+    const c = `q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Im0 Do Q`;
+    obj(p + 1, `<< /Length ${c.length} >>\nstream\n${c}\nendstream`);
+    const bin = Uint8Array.from(atob(im.data), ch => ch.charCodeAt(0));
+    offs[p + 2] = len;
+    put(`${p + 2} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${im.w} /Height ${im.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bin.length} >>\nstream\n`);
+    put(bin); put("\nendstream\nendobj\n");
+  });
+  const total = 3 + n * 3, xr = len;
+  let t = `xref\n0 ${total}\n0000000000 65535 f \n`;
+  for (let i = 1; i < total; i++) t += String(offs[i]).padStart(10, "0") + " 00000 n \n";
+  put(t + `trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xr}\n%%EOF`);
+  return new Blob(chunks, { type: "application/pdf" });
+}
+
+function sello() { const d = new Date(), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; }
+function soloImagenes() { return fotos.filter(f => !f.pdf); }
+
+function descargarPDF() {
+  const imgs = soloImagenes(); if (!imgs.length) return alert("No hay fotos para armar el PDF");
+  if (fotos.some(f => f.pdf)) alert("Los PDF que subiste no se incluyen en el PDF nuevo; solo las fotos.");
+  descargarBlob(crearPDF(imgs), "Informes_" + sello() + ".pdf");
+  estado(`✅ PDF de ${imgs.length} página(s) generado.`);
+}
+
+function descargarBlob(blob, nombre) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nombre;
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+}
+
+async function subirDrive() {
+  const imgs = soloImagenes(); if (!imgs.length) return alert("No hay fotos para armar el PDF");
+  localStorage.setItem("inf_pin", $("pin").value);
+  $("btnDrive").disabled = true; estado("☁️ Armando el PDF y subiéndolo a Drive...");
+  try {
+    const b64 = await aB64(crearPDF(imgs));
+    const r = await llamar({ action: "subirPDF", pin: $("pin").value, nombre: "Informes_" + sello() + ".pdf", pdf: b64 });
+    const e = $("estado"); e.textContent = "✅ Subido a Drive: ";
+    const a = document.createElement("a"); a.href = r.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = r.nombre; e.append(a);
+  } catch (e) { estado("❌ " + e.message); }
+  $("btnDrive").disabled = false;
+}
+
+// ---------------------------------------------------------------------
+//  Comunicación con Apps Script
+// ---------------------------------------------------------------------
 async function llamar(payload, ms = 180000) {
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
   try {
@@ -83,23 +235,23 @@ async function llamar(payload, ms = 180000) {
 
 async function transcribir() {
   let iv;
-  const files = [...$("archivos").files];
-  if (!files.length) return alert("Elige al menos un archivo");
+  if (!fotos.length) return alert("Agrega al menos una foto o PDF");
   if (SCRIPT_URL.startsWith("PEGA")) return alert("Falta pegar la URL del Apps Script en SCRIPT_URL");
+  const peso = fotos.reduce((s, f) => s + f.data.length, 0);
+  if (peso > MAX_B64) return alert("Son demasiadas fotos para una sola lectura (" + Math.round(peso / 1e6) + " MB). Divídelas en dos tandas.");
   localStorage.setItem("inf_pin", $("pin").value);
-  $("btnT").disabled = true; $("estado").textContent = "⏳ Leyendo el informe (puede tardar ~30 s)...";
+  $("btnT").disabled = true;
   try {
-    const archivos = await Promise.all(files.map(preparar));
     let seg = 0;
-    iv = setInterval(() => { $("estado").textContent = "⏳ Leyendo el informe... " + (++seg) + " s"; }, 1000);
-    const r = await llamar({ action: "transcribir", pin: $("pin").value, archivos });
+    iv = setInterval(() => { estado(`⏳ Leyendo ${fotos.length} página(s) como un solo conjunto... ${++seg} s`); }, 1000);
+    const r = await llamar({ action: "transcribir", pin: $("pin").value, archivos: fotos.map(f => ({ mime: f.mime, data: f.data })) });
     ordenes = r.ordenes;
     const dudas = ordenes.reduce((n, o) => n + (o.operaciones || []).filter(x => x.revisar).length, 0);
-    $("estado").textContent = `✅ ${ordenes.length} orden(es) leída(s). ${dudas ? "Revisa las " + dudas + " fila(s) amarillas." : "Sin dudas marcadas."} Corrige lo que haga falta antes de descargar.`;
+    clearInterval(iv);
+    estado(`✅ ${ordenes.length} orden(es) leída(s). ${dudas ? "Revisa las " + dudas + " fila(s) amarillas." : "Sin dudas marcadas."} Corrige lo que haga falta antes de guardar o descargar.`);
     render();
-  } catch (e) { $("estado").textContent = "❌ " + e.message; }
-  clearInterval(iv);
-  $("btnT").disabled = false;
+  } catch (e) { clearInterval(iv); estado("❌ " + e.message); }
+  $("btnT").disabled = !fotos.length;
 }
 
 function inp(obj, key) { const i = document.createElement("input"); i.value = obj[key] ?? ""; i.oninput = () => { obj[key] = i.value; }; return i; }
@@ -136,17 +288,48 @@ function render() {
       .forEach(([k, l]) => g2.append(campo(o, k, l)));
     card.append(g, sc, nl, ta, g2); cont.append(card);
   });
-  $("btnX").style.display = ordenes.length ? "inline-block" : "none";
+  $("accRes").style.display = ordenes.length ? "flex" : "none";
 }
 
 async function guardar() {
-  $("btnX").disabled = true; $("estado").textContent = "💾 Guardando en tu Google Sheet...";
+  $("btnX").disabled = true; estado("💾 Guardando en tu Google Sheet...");
   try {
     const r = await llamar({ action: "guardar", pin: $("pin").value, ordenes });
-    $("estado").textContent = `✅ Guardado: ${ordenes.length} orden(es) y ${r.filas} fila(s) de operaciones en tu Google Sheet (hojas "Ordenes" y "Operaciones").`;
-  } catch (e) { $("estado").textContent = "❌ " + e.message; }
+    estado(`✅ Guardado: ${ordenes.length} orden(es) y ${r.filas} fila(s) de operaciones en tu Google Sheet (hojas "Ordenes" y "Operaciones").`);
+  } catch (e) { estado("❌ " + e.message); }
   $("btnX").disabled = false;
 }
+
+// ---------------------------------------------------------------------
+//  EXCEL (se genera en el teléfono; todo como texto para no perder ceros: 0020, 0001)
+// ---------------------------------------------------------------------
+const COL_ORDENES = ["OT","Fecha ejecución","Descripción","Puesto resp.","Ubicación","Equipo","Subequipo","Notas","Total plan (h)","Total real (h)","Realizado por","Cargo","Fecha fin","Guardado el","Cargado a SAP"];
+const COL_OPS = ["OT","Fecha ejecución","Equipo","Op","SOp","Puesto","Operación","Plan (h)","Real (h)","Estado","Observación","Dudosa","Realizado por","Fecha fin","Guardado el","Cargado a SAP"];
+const EST_XLS = { ok: "Realizado", no: "No realizado / N/A", valor: "Valor", vacio: "" };
+
+function descargarExcel() {
+  if (typeof XLSX === "undefined") return alert("No se cargó la librería de Excel. Conéctate a internet una vez y vuelve a intentar.");
+  if (!ordenes.length) return alert("No hay órdenes para descargar");
+  const s = v => (v == null ? "" : String(v));
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  const ahora = `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  const filasO = ordenes.map(o => [o.ot, o.fecha_ejecucion, o.descripcion, o.puesto_resp, o.ubicacion, o.equipo, o.subequipo, o.notas,
+    o.tiempo_total_plan, o.tiempo_total_real, o.realizado_por, o.cargo, o.fecha_fin, ahora, ""].map(s));
+  const filasP = [];
+  ordenes.forEach(o => (o.operaciones || []).forEach(x => filasP.push([o.ot, o.fecha_ejecucion, o.equipo, x.op, x.sop, x.puesto, x.operacion,
+    x.plan_h, x.real_h, EST_XLS[x.estado] || "", x.observacion, x.revisar ? "SI" : "", o.realizado_por, o.fecha_fin, ahora, ""].map(s))));
+  const wb = XLSX.utils.book_new();
+  const wsO = XLSX.utils.aoa_to_sheet([COL_ORDENES, ...filasO]);
+  const wsP = XLSX.utils.aoa_to_sheet([COL_OPS, ...filasP]);
+  wsO["!cols"] = COL_ORDENES.map((c, i) => ({ wch: i === 2 || i === 7 ? 40 : 16 }));
+  wsP["!cols"] = COL_OPS.map((c, i) => ({ wch: i === 6 || i === 10 ? 40 : 14 }));
+  XLSX.utils.book_append_sheet(wb, wsO, "Ordenes");
+  XLSX.utils.book_append_sheet(wb, wsP, "Operaciones");
+  XLSX.writeFile(wb, "Informes_" + sello() + ".xlsx");
+  estado(`✅ Excel descargado: ${ordenes.length} orden(es) y ${filasP.length} fila(s) de operaciones.`);
+}
+
+renderFotos();
 </script>
 </body>
 </html>
